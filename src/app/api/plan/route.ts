@@ -7,6 +7,8 @@ import { walkLeg, cycleLeg, haversineKm } from "@/lib/data/osrm";
 import { CORRIDOR_ORIGIN_STATION, CORRIDOR_DEST_STATION } from "@/lib/domain/defaultTrip";
 import type { ScenarioId } from "@/fixtures/trainAlerts";
 import type { CrowdForecastEntry, TripRequest } from "@/lib/domain/types";
+import { isTripRequest } from "@/lib/domain/validateTrip";
+import { DEMO_DATE, DEMO_REFERENCE, demoWeather } from "@/lib/domain/demo";
 
 export const dynamic = "force-dynamic";
 
@@ -21,14 +23,23 @@ interface PlanApiBody {
 export async function POST(req: Request) {
   let body: PlanApiBody;
   try {
-    body = await req.json();
+    if (Number(req.headers.get("content-length")) > 8192) return NextResponse.json({ error: "Request too large." }, { status: 413 });
+    const input = await req.text();
+    if (input.length > 8192) return NextResponse.json({ error: "Request too large." }, { status: 413 });
+    body = JSON.parse(input);
   } catch {
     return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const { request, scenario = "normal", simulateStale = false } = body;
-  if (!request?.origin?.coord || !request?.destination?.coord) {
-    return NextResponse.json({ error: "origin and destination coordinates are required." }, { status: 400 });
+  const { request, scenario = "live", simulateStale = false } = body ?? {};
+  if (!isTripRequest(request) || !["live", "normal", "planned-works", "disruption", "irrelevant-disruption"].includes(scenario) || typeof simulateStale !== "boolean") {
+    return NextResponse.json({ error: "A valid trip, same-day Singapore time window, preferences and scenario are required." }, { status: 400 });
+  }
+  if (scenario !== "live" && request.date !== DEMO_DATE) {
+    return NextResponse.json({ error: `Demo scenarios use ${DEMO_DATE} Singapore time. Select a demo in the app to load its separate example trip.` }, { status: 400 });
+  }
+  if (scenario === "live" && simulateStale) {
+    return NextResponse.json({ error: "Stale-data simulation is available only in demo mode; Live observation times are preserved." }, { status: 400 });
   }
 
   const originGapKm = haversineKm(request.origin.coord, CORRIDOR_ORIGIN_STATION);
@@ -47,10 +58,10 @@ export async function POST(req: Request) {
   const [alerts, nelCrowd, cclCrowd, weatherOrigin, weatherDest, originWalkLeg, originCycleLeg, destWalkLeg] =
     await Promise.all([
       fetchTrainServiceAlerts(scenario),
-      fetchCrowdForecast("NEL"),
-      fetchCrowdForecast("CCL"),
-      fetchWeatherFor("Punggol"),
-      fetchWeatherFor("Queenstown"),
+      fetchCrowdForecast("NEL", request.date, scenario !== "live"),
+      fetchCrowdForecast("CCL", request.date, scenario !== "live"),
+      scenario === "live" ? fetchWeatherFor("Punggol") : demoWeather("Punggol"),
+      scenario === "live" ? fetchWeatherFor("Queenstown") : demoWeather("Queenstown"),
       walkLeg(request.origin.coord, CORRIDOR_ORIGIN_STATION, request.origin.label, "Punggol"),
       cycleLeg(request.origin.coord, CORRIDOR_ORIGIN_STATION, request.origin.label, "Punggol"),
       walkLeg(CORRIDOR_DEST_STATION, request.destination.coord, "one-north", request.destination.label),
@@ -64,7 +75,7 @@ export async function POST(req: Request) {
   }
 
   if (simulateStale) {
-    const staleTime = new Date(Date.now() - 3 * 3600_000).toISOString();
+    const staleTime = new Date(Date.parse(DEMO_REFERENCE) - 3 * 3600_000).toISOString();
     alerts.provenance.fetchedAt = staleTime;
     alerts.provenance.note = (alerts.provenance.note ? alerts.provenance.note + " " : "") + "Simulated stale cache for demo purposes.";
   }
@@ -79,14 +90,22 @@ export async function POST(req: Request) {
     destWalkLeg,
     provenance: {
       alerts: alerts.provenance,
-      crowdForecast: nelCrowd.provenance.mode === "live" ? nelCrowd.provenance : cclCrowd.provenance,
+      crowdForecast: {
+        mode: nelCrowd.provenance.mode === "unavailable" || cclCrowd.provenance.mode === "unavailable" ? "unavailable" : nelCrowd.provenance.mode,
+        source: scenario === "live" ? "LTA DataMall PCDForecast (NEL + CCL)" : "Constructed NEL + CCL crowd forecasts",
+        fetchedAt: [nelCrowd.provenance.fetchedAt, cclCrowd.provenance.fetchedAt].sort()[0],
+        note: `NEL: ${nelCrowd.provenance.note ?? nelCrowd.provenance.mode} CCL: ${cclCrowd.provenance.note ?? cclCrowd.provenance.mode}`,
+      },
       weather: weatherOrigin.provenance,
     },
   });
 
+  if (scenario !== "live") result.simulation = { referenceTime: DEMO_REFERENCE, stale: simulateStale };
+
   return NextResponse.json({
+    scenario,
     result,
     alerts: { status: alerts.status, messages: alerts.messages, affectedSegments: alerts.affectedSegments, provenance: alerts.provenance },
     weather: { origin: weatherOrigin, destination: weatherDest },
-  });
+  }, { headers: { "Cache-Control": "no-store" } });
 }

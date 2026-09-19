@@ -55,6 +55,10 @@ function baseContext(overrides: Partial<PlanContext> = {}): PlanContext {
 }
 
 describe("planTrip — latest arrival constraint", () => {
+  it("does not wrap a next-day arrival into a feasible same-day journey", () => {
+    const result = planTrip(baseRequest({ earliestDeparture: "23:40", latestArrival: "23:59" }), baseContext());
+    expect(result.noFeasibleRoute).toBe(true);
+  });
   it("marks a candidate infeasible when it would arrive after the latest acceptable arrival", () => {
     const request = baseRequest({ earliestDeparture: "07:15", latestArrival: "07:25" }); // impossibly tight
     const result = planTrip(request, baseContext());

@@ -1,11 +1,8 @@
 // Labelled fixture standing in for LTA DataMall's PCDForecast endpoint
 // (GET /ltaodataservice/PCDForecast?TrainLine=<code>), which needs a
-// registered AccountKey we do not have configured in this environment (see
-// README "Missing credentials"). The live adapter code in
-// src/lib/data/crowding.ts calls the real endpoint first and only falls
-// back to this fixture when no key is configured or the call fails —
-// falls back are always labelled `mode: "synthetic"` in the UI, never
-// silently presented as live.
+// registered AccountKey for Live mode. This fixture is used only on explicit
+// demo selection, even with a configured key. It is labelled synthetic and
+// never used as a fallback for a failed Live request.
 //
 // Shape matches the real endpoint: per-station, 30-minute buckets, the
 // four-value l/m/h/NA scale. Values are NOT invented per-minute — they stay

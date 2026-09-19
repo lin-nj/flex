@@ -13,6 +13,7 @@ import SavedTripControls from "@/components/SavedTripControls";
 import Disclosure from "@/components/Disclosure";
 import DataAttribution from "@/components/DataAttribution";
 import { buildDefaultTripRequest } from "@/lib/domain/defaultTrip";
+import { buildDemoTripRequest } from "@/lib/domain/demo";
 import { ROUTE_OPTIONS } from "@/lib/domain/corridor";
 import { assessDisruptionForRoute } from "@/lib/domain/disruptionMatch";
 import { cachePlan, readCachedPlan, readSavedTrip, saveTrip, clearSavedTrip } from "@/lib/offline/cache";
@@ -22,19 +23,23 @@ import type { AffectedSegment, CandidateEvaluation, PlanResult, TripRequest } fr
 
 interface PlanApiResponse {
   result: PlanResult;
-  alerts: { status: 1 | 2; messages: { content: string; createdDate: string }[]; affectedSegments: AffectedSegment[] };
+  alerts: { status: 1 | 2 | null; messages: { content: string; createdDate: string }[]; affectedSegments: AffectedSegment[] };
   error?: string;
 }
 
 export default function Home() {
-  const [request, setRequest] = useState<TripRequest>(() => buildDefaultTripRequest());
-  const [scenario, setScenario] = useState<ScenarioId>("normal");
+  const [liveRequest, setLiveRequest] = useState<TripRequest>(() => buildDefaultTripRequest());
+  const [demoRequest, setDemoRequest] = useState<TripRequest>(() => buildDemoTripRequest());
+  const [scenario, setScenario] = useState<ScenarioId>("live");
+  const request = scenario === "live" ? liveRequest : demoRequest;
+  const setRequest = scenario === "live" ? setLiveRequest : setDemoRequest;
   const [simulateStale, setSimulateStale] = useState(false);
   const [data, setData] = useState<PlanApiResponse | null>(null);
   const [selected, setSelected] = useState<CandidateEvaluation | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isOnline, setIsOnline] = useState(true);
+  const [usingCached, setUsingCached] = useState(false);
   const [cachedAt, setCachedAt] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const [lastReevaluatedAt, setLastReevaluatedAt] = useState<string | null>(null);
@@ -42,12 +47,17 @@ export default function Home() {
   const [pushStatus, setPushStatus] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const lastRecommendedId = useRef<string | null>(null);
+  const requestSequence = useRef(0);
 
   const plan = useCallback(
     async (req: TripRequest, sc: ScenarioId, stale: boolean, { silent = false }: { silent?: boolean } = {}) => {
+      const sequence = ++requestSequence.current;
       if (!silent) {
         setLoading(true);
         setError(null);
+        setData(null);
+        setSelected(null);
+        setUsingCached(false);
       }
       try {
         const res = await fetch("/api/plan", {
@@ -56,14 +66,16 @@ export default function Home() {
           body: JSON.stringify({ request: req, scenario: sc, simulateStale: stale }),
         });
         const json: PlanApiResponse = await res.json();
+        if (sequence !== requestSequence.current) return;
         if (!res.ok) {
           if (!silent) setError(json.error ?? "Could not plan this trip.");
           return;
         }
         setData(json);
+        setUsingCached(false);
         if (json.result.recommended) {
           setSelected(json.result.recommended);
-          cachePlan(json.result);
+          if (sc === "live") cachePlan(json.result);
           setCachedAt(new Date().toISOString());
 
           if (silent && lastRecommendedId.current && lastRecommendedId.current !== json.result.recommended.id) {
@@ -75,9 +87,17 @@ export default function Home() {
         }
         setLastReevaluatedAt(new Date().toISOString());
       } catch {
+        if (sequence !== requestSequence.current) return;
+        const cached = sc === "live" ? readCachedPlan(req) : null;
+        if (cached) {
+          setData({ result: cached.result, alerts: { status: null, messages: [], affectedSegments: [] } });
+          setSelected(cached.result.recommended);
+          setCachedAt(cached.cachedAt);
+          setUsingCached(true);
+        }
         if (!silent) setError("Network error while planning — check your connection.");
       } finally {
-        if (!silent) setLoading(false);
+        if (sequence === requestSequence.current) setLoading(false);
       }
     },
     []
@@ -93,19 +113,21 @@ export default function Home() {
     if (saved) {
       // One-time hydration from localStorage on mount — not a reactive sync loop.
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setRequest(saved);
+      setLiveRequest(saved);
       setIsSaved(true);
     }
     setIsOnline(navigator.onLine);
 
     if (navigator.onLine) {
-      plan(initialReq, "normal", false);
+      plan(initialReq, "live", false);
     } else {
       const cached = readCachedPlan();
       if (cached) {
-        setData({ result: cached.result, alerts: { status: 1, messages: [], affectedSegments: [] } });
+        setData({ result: cached.result, alerts: { status: null, messages: [], affectedSegments: [] } });
         setSelected(cached.result.recommended);
         setCachedAt(cached.cachedAt);
+        setLiveRequest(cached.result.request);
+        setUsingCached(true);
       }
     }
 
@@ -124,7 +146,7 @@ export default function Home() {
   // is a foreground timer, not real background push — see ExplanationPanel
   // and WRITEUP.md.
   useEffect(() => {
-    if (!isSaved) return;
+    if (!isSaved || scenario !== "live") return;
     const id = setInterval(() => {
       if (navigator.onLine) plan(request, scenario, simulateStale, { silent: true });
     }, 120_000);
@@ -137,8 +159,12 @@ export default function Home() {
   };
 
   const handleScenario = (s: ScenarioId) => {
+    const nextRequest = s === "live" ? liveRequest : demoRequest;
+    const stale = s === "live" ? false : simulateStale;
     setScenario(s);
-    plan(request, s, simulateStale);
+    setSimulateStale(stale);
+    setChangedNotice(null);
+    plan(nextRequest, s, stale);
   };
   const handleStale = (v: boolean) => {
     setSimulateStale(v);
@@ -191,9 +217,9 @@ export default function Home() {
         />
       )}
 
-      {(!isOnline || error) && (
+      {(!isOnline || usingCached || error) && (
         <div className="flex flex-col gap-3 px-5 pt-4">
-          {!isOnline && <OfflineBanner cachedAt={cachedAt} />}
+          {(!isOnline || usingCached) && <OfflineBanner cachedAt={cachedAt} connectionFailed={usingCached && isOnline} />}
           {error && (
             <div className="rounded-[14px] bg-danger-soft p-4 text-[15px] text-danger" role="alert">
               {error}
@@ -208,6 +234,16 @@ export default function Home() {
         </div>
       )}
 
+      {result && (
+        <div className="px-5 pt-4 text-sm" role="status">
+          <p>{result.request.date} · All trip times are Singapore time.</p>
+          {result.simulation && <p className="mt-2 text-warn">Demo scenario: {result.request.date}, reference clock 07:15 Singapore time. Separate example trip with simulated train alerts, crowd forecasts and fair weather. Your Live trip is preserved.</p>}
+          {result.conditionsProvenance.alerts.mode === "unavailable" && <p className="mt-2 text-warn">Live train status unavailable. This plan cannot confirm that the route is operating normally.</p>}
+          {result.simulation?.stale && <p className="mt-2 text-warn">Stale-data simulation is active. Conditions have not been freshly verified.</p>}
+          {data?.alerts.messages.map((m, index) => <p className="mt-2 rounded-xl bg-warn-soft p-3 text-warn" key={index}>{m.content}</p>)}
+        </div>
+      )}
+
       {loading && !result && <p className="px-5 pt-8 text-[17px] text-text-muted">Planning your trip…</p>}
 
       {result?.recommended && selected && (
@@ -215,8 +251,8 @@ export default function Home() {
           <RecommendationCard candidate={result.recommended} explanation={result.explanation} />
 
           <RouteMap
-            origin={request.origin}
-            destination={request.destination}
+            origin={result.request.origin}
+            destination={result.request.destination}
             candidate={selected}
             disruptedStations={disruptedStations}
           />
@@ -230,13 +266,7 @@ export default function Home() {
             />
           </div>
 
-          <div className="mx-5 mt-7 overflow-hidden rounded-[14px] bg-surface">
-            <Disclosure title="Trip settings">
-              <TripForm request={request} onChange={setRequest} onSubmit={handlePlan} loading={loading} />
-            </Disclosure>
-          </div>
-
-          <div className="px-5 pt-7">
+          {scenario === "live" && <div className="px-5 pt-7">
             <SavedTripControls
               isSaved={isSaved}
               onSave={handleSave}
@@ -244,11 +274,16 @@ export default function Home() {
               lastReevaluatedAt={lastReevaluatedAt}
               changedNotice={changedNotice}
             />
-          </div>
+          </div>}
 
-          <DataAttribution result={result} />
         </>
       )}
+      <div className="mx-5 mt-7 overflow-hidden rounded-[14px] bg-surface">
+        <Disclosure title="Trip settings" defaultOpen={Boolean(error || result?.noFeasibleRoute)}>
+          <TripForm request={request} onChange={setRequest} onSubmit={handlePlan} loading={loading} />
+        </Disclosure>
+      </div>
+      {result && <DataAttribution result={result} />}
     </main>
   );
 }

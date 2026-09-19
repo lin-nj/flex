@@ -1,7 +1,7 @@
 // Labelled fixtures standing in for LTA DataMall's TrainServiceAlerts
 // endpoint. The live adapter (src/lib/data/trainAlerts.ts) calls the real
-// endpoint when an AccountKey is configured; these fixtures are the
-// fallback, and are always surfaced with `mode: "synthetic"` — never
+// endpoint in Live mode; these fixtures require an explicit demo selection
+// and are always surfaced with `mode: "synthetic"` — never
 // presented as freshly fetched.
 //
 // Per PS2_README.md 2.6: "AffectedSegments is empty on a normal day... you
@@ -15,19 +15,21 @@
 // day / during an incident on an unrelated line.
 
 import type { TrainServiceAlertsResponse } from "../lib/domain/types";
+import { DEMO_DATE, DEMO_OBSERVED } from "../lib/domain/demo";
 
-export type ScenarioId = "normal" | "planned-works" | "disruption" | "irrelevant-disruption";
+export type ScenarioId = "live" | "normal" | "planned-works" | "disruption" | "irrelevant-disruption";
 
 const base = (): Omit<TrainServiceAlertsResponse, "affectedSegments" | "messages"> => ({
   status: 1,
   provenance: {
     mode: "synthetic",
     source: "TrainServiceAlerts (constructed fixture, matches real schema)",
-    fetchedAt: new Date().toISOString(),
+    fetchedAt: DEMO_OBSERVED,
+    note: `Constructed scenario for ${DEMO_DATE}. Injected incidents are assumed active for this simulation day; the 26 Sep planned notice is outside it.`,
   },
 });
 
-export function buildTrainAlertsFixture(scenario: ScenarioId): TrainServiceAlertsResponse {
+export function buildTrainAlertsFixture(scenario: Exclude<ScenarioId, "live">): TrainServiceAlertsResponse {
   switch (scenario) {
     case "normal":
       return {
@@ -69,7 +71,7 @@ export function buildTrainAlertsFixture(scenario: ScenarioId): TrainServiceAlert
           {
             content:
               "Circle Line: Train service between HarbourFront and Kent Ridge is temporarily unavailable due to a signalling fault. Free MRT shuttle and free regular bus boarding are available at the affected stations. Additional travel time of approximately 20 minutes.",
-            createdDate: new Date().toISOString(),
+            createdDate: DEMO_OBSERVED,
           },
         ],
       };
@@ -89,7 +91,7 @@ export function buildTrainAlertsFixture(scenario: ScenarioId): TrainServiceAlert
           {
             content:
               "North South Line: Train service between Admiralty and Woodlands is temporarily unavailable due to a track fault. Free regular bus boarding is available at the affected stations.",
-            createdDate: new Date().toISOString(),
+            createdDate: DEMO_OBSERVED,
           },
         ],
       };

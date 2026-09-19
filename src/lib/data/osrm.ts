@@ -41,7 +41,7 @@ async function routeVia(
   if (cached) return cached;
 
   const url = `${OSRM_HOST[profile]}/${from[0]},${from[1]};${to[0]},${to[1]}?overview=full&geometries=geojson`;
-  const res = await fetch(url, { next: { revalidate: 3600 } });
+  const res = await fetch(url, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(8000) });
   if (!res.ok) throw new Error(`OSRM HTTP ${res.status}`);
   const json = await res.json();
   if (json.code !== "Ok") throw new Error(`OSRM code ${json.code}`);
@@ -51,6 +51,7 @@ async function routeVia(
     durationSeconds: route.duration,
     geometry: route.geometry.coordinates as [number, number][],
   };
+  if (cache.size >= 200) cache.delete(cache.keys().next().value!);
   cache.set(key, result);
   return result;
 }

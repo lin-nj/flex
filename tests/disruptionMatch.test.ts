@@ -7,6 +7,11 @@ const viaHarbourFront = ROUTE_OPTIONS.find((r) => r.id === "via-harbourfront")!;
 const viaSerangoon = ROUTE_OPTIONS.find((r) => r.id === "via-serangoon")!;
 
 describe("disruption matching", () => {
+  it("matches the transfer platform code even when map stations omit that alias", () => {
+    const impact = assessDisruptionForRoute({ line: "CCL", direction: "Both", stations: ["CC13"] }, viaSerangoon);
+    expect(impact.relevant).toBe(true);
+    expect(isRouteSevered(viaSerangoon, impact)).toBe(true);
+  });
   it("flags a real disruption on a segment this route actually uses", () => {
     const alerts = buildTrainAlertsFixture("disruption");
     const impact = assessDisruptionForRoute(alerts.affectedSegments[0], viaHarbourFront);

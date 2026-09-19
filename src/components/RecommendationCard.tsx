@@ -1,6 +1,7 @@
 import type { CandidateEvaluation } from "@/lib/domain/types";
 import CrowdBadge from "./CrowdBadge";
 import { routeLabel, ACCESS_MODE_LABEL, formatDuration } from "@/lib/domain/labels";
+import { CROWD_RANK } from "@/lib/domain/crowdScale";
 
 /**
  * The answer, at iOS large-title weight. Arjun opens this to settle one
@@ -15,6 +16,8 @@ export default function RecommendationCard({
   explanation: string;
 }) {
   const activeMinutes = Math.round(candidate.walkingExposureMinutes + candidate.cyclingMinutes);
+  const known = candidate.crowdEstimates.filter((e) => e.level !== "unknown");
+  const worstKnown = [...known].sort((a, b) => CROWD_RANK[b.level] - CROWD_RANK[a.level])[0]?.level;
 
   return (
     <section className="px-5 pb-6 pt-7" aria-label="Recommended departure">
@@ -31,7 +34,7 @@ export default function RecommendationCard({
       </p>
 
       <div className="mt-5 flex flex-wrap items-center gap-2">
-        <CrowdBadge level={candidate.worstCrowd} />
+        <CrowdBadge level={candidate.worstCrowd} estimates={candidate.crowdEstimates} />
         {candidate.weatherFlag && (
           <span className="rounded-full bg-muted-fill px-3 py-1.5 text-[15px] font-medium text-text-muted">
             {candidate.weatherFlag}
@@ -43,6 +46,10 @@ export default function RecommendationCard({
           </span>
         )}
       </div>
+      {known.length < candidate.crowdEstimates.length && <p className="mt-3 text-[15px] text-text-muted">
+        Crowd coverage: {known.length} of {candidate.crowdEstimates.length} stations.
+        {worstKnown ? ` Known forecasts reach ${worstKnown}; other stations remain unknown.` : " No forecast covers these station arrival times; the trip is still feasible."}
+      </p>}
 
       <p className="mt-5 text-[17px] leading-relaxed">{explanation}</p>
 

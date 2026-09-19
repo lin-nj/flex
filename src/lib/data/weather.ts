@@ -22,7 +22,7 @@ interface RawResponse {
 
 async function fetchArea(area: string, fallbackNote?: string): Promise<WeatherSnapshot> {
   try {
-    const res = await fetch(ENDPOINT, { next: { revalidate: 300 } }); // nowcast refreshes ~every 30 min; poll at most every 5 min
+    const res = await fetch(ENDPOINT, { next: { revalidate: 300 }, signal: AbortSignal.timeout(8000) });
     if (!res.ok) throw new Error(`weather HTTP ${res.status}`);
     const raw = (await res.json()) as RawResponse;
     const item = raw.data.items[0];
@@ -36,21 +36,21 @@ async function fetchArea(area: string, fallbackNote?: string): Promise<WeatherSn
       provenance: {
         mode: "live",
         source: "data.gov.sg two-hr-forecast",
-        fetchedAt: new Date().toISOString(),
+        fetchedAt: item.timestamp,
         note: fallbackNote,
       },
     };
-  } catch (err) {
+  } catch {
     return {
       forecastText: "Weather unavailable",
       areaName: area,
       isWet: false,
       validUntil: new Date(Date.now() + 2 * 3600_000).toISOString(),
       provenance: {
-        mode: "synthetic",
+        mode: "unavailable",
         source: "data.gov.sg two-hr-forecast",
         fetchedAt: new Date().toISOString(),
-        note: `Live weather call failed (${(err as Error).message}).`,
+        note: "Live weather unavailable; dry conditions are not verified.",
       },
     };
   }

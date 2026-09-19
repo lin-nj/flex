@@ -80,7 +80,7 @@ export interface TripRequest {
   preferences: TripPreferences;
 }
 
-export type DataSourceMode = "live" | "replay" | "synthetic";
+export type DataSourceMode = "live" | "replay" | "synthetic" | "unavailable";
 
 export interface Provenance {
   mode: DataSourceMode;
@@ -99,7 +99,7 @@ export interface AffectedSegment {
 }
 
 export interface TrainServiceAlertsResponse {
-  status: 1 | 2;
+  status: 1 | 2 | null;
   affectedSegments: AffectedSegment[];
   messages: { content: string; createdDate: string }[];
   provenance: Provenance;
@@ -169,6 +169,7 @@ export interface CandidateEvaluation {
 }
 
 export interface PlanResult {
+  simulation?: { referenceTime: string; stale: boolean };
   request: TripRequest;
   recommended: CandidateEvaluation | null;
   alternatives: CandidateEvaluation[];

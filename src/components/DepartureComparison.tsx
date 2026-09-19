@@ -40,7 +40,7 @@ export default function DepartureComparison({
                     {tag && ` · ${tag}`}
                   </span>
                 </span>
-                <CrowdBadge level={c.worstCrowd} compact />
+                <CrowdBadge level={c.worstCrowd} estimates={c.crowdEstimates} compact />
               </button>
               {i < options.length - 1 && <div className="ml-[76px] h-px bg-border" />}
             </li>

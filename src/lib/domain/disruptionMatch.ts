@@ -23,7 +23,7 @@ export function assessDisruptionForRoute(segment: AffectedSegment, route: RouteO
     return { segment, relevant: false, blockedStations: [], hasMitigation: false };
   }
 
-  const routeStationSet = new Set(route.stations);
+  const routeStationSet = new Set(route.segments.filter((s) => s.line === canonical).flatMap((s) => [s.from, s.to]));
   const blockedStations = segment.stations.filter((s) => routeStationSet.has(s));
 
   if (blockedStations.length === 0) {
@@ -54,10 +54,5 @@ export function isRouteSevered(route: RouteOption, impact: DisruptionImpact): bo
   if (!impact.relevant || impact.hasMitigation) return false;
   // If every blocked station sits strictly inside the route (not just touching one end),
   // continuity is broken with no official mitigation offered.
-  const idxs = impact.blockedStations.map((s) => route.stations.indexOf(s)).filter((i) => i >= 0);
-  if (idxs.length === 0) return false;
-  const min = Math.min(...idxs);
-  const max = Math.max(...idxs);
-  const touchesEnd = min === 0 || max === route.stations.length - 1;
-  return !touchesEnd || idxs.length >= 2;
+  return impact.blockedStations.some((code) => route.segments.some((s) => s.from === code || s.to === code));
 }

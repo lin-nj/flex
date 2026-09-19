@@ -9,6 +9,7 @@ import { allSubscriptions } from "@/lib/push/subscriptions";
 // visibly says [Test] — this never dresses up a fake alert as a real one.
 
 export async function POST(req: Request) {
+  if (process.env.NODE_ENV !== "development") return NextResponse.json({ error: "Hosted push demo disabled: no durable subscriptions or background monitoring.", sent: 0 }, { status: 503 });
   const publicKey = process.env.VAPID_PUBLIC_KEY;
   const privateKey = process.env.VAPID_PRIVATE_KEY;
   const subject = process.env.VAPID_SUBJECT;

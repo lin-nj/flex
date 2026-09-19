@@ -160,7 +160,7 @@ function buildExplanation(
         `the ${earliestBaseline.routeOptionId === "via-harbourfront" ? "HarbourFront" : "Serangoon"} route is currently disrupted; routing via ${recommended.routeOptionId === "via-harbourfront" ? "HarbourFront" : "Serangoon"} avoids it entirely`
       );
     } else {
-      reasons.push(`routing via ${recommended.routeOptionId === "via-harbourfront" ? "HarbourFront" : "Serangoon"} instead is faster and no less crowded`);
+      reasons.push(`routing via ${recommended.routeOptionId === "via-harbourfront" ? "HarbourFront" : "Serangoon"} has the better combined time, crowd and disruption score for your preferences`);
     }
   } else if (toMinutes(recommended.departureClock) > toMinutes(earliestBaseline.departureClock)) {
     if (recommended.worstCrowd !== "high" && earliestBaseline.worstCrowd === "high") {

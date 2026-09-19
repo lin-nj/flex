@@ -30,8 +30,7 @@ export default function TripForm({
         <div className="my-0.5 text-text-muted">↓ Punggol ↔ one-north corridor (North East Line + Circle Line)</div>
         <div className="font-semibold">{request.destination.label}</div>
         <p className="mt-1.5 text-xs text-text-muted">
-          This demo plans a bounded corridor. Editing the origin/destination text isn&apos;t supported yet — see
-          &ldquo;Known limits&rdquo; in the source panel below.
+          This demo plans Punggol → one-north only. Origin/destination editing and reverse trips are not supported.
         </p>
       </div>
 

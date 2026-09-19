@@ -31,7 +31,7 @@ export default function SavedTripControls({
             {lastReevaluatedAt && (
               <>
                 {" · last checked "}
-                {new Date(lastReevaluatedAt).toLocaleTimeString("en-SG", { hour: "2-digit", minute: "2-digit" })}
+                {new Date(lastReevaluatedAt).toLocaleTimeString("en-SG", { timeZone: "Asia/Singapore", hour: "2-digit", minute: "2-digit" })}
               </>
             )}
           </p>

@@ -2,7 +2,7 @@
 
 **Problem Statement 2: Smart Commuter Companion.** Team submission, built around persona **2 — Arjun, the flexible-start, multi-modal commuter** (PS2_README.md §2.2). We did not build for Rachel or Mdm Lim; Arjun's needs (crowding, sheltered/short walking exposure, cycling and bike handling, a ~1-hour flexible departure window) shaped every decision below.
 
-The app lives in **`PS2/app/`** — a Next.js/TypeScript/Leaflet web app. See `PS2/app/README.md` for setup, run instructions and the first journey to try.
+The app lives at the **repository root** — a Next.js/TypeScript/Leaflet web app. See `README.md` for setup, run instructions and the first journey to try.
 
 ## 1. The product insight
 
@@ -13,7 +13,7 @@ Flex's one demonstration, end to end: given the same origin, destination and arr
 ## 2. Architecture
 
 ```
-PS2/app/
+repository root/
   src/lib/domain/      pure, framework-free ranking logic (unit-tested)
     types.ts             shared domain types
     corridor.ts           real station data + two real route options
@@ -22,7 +22,7 @@ PS2/app/
     disruptionMatch.ts       matches a TrainServiceAlerts segment to a specific route
     bikeRules.ts              official folding-bike carriage rule, cited
     crowdScale.ts              l/m/h/NA -> low/moderate/high/unknown, unknown != low
-  src/lib/data/          server-side adapters: live call first, labelled fixture fallback
+  src/lib/data/          server-side adapters: live/unknown or explicit synthetic demo
     trainAlerts.ts, crowding.ts, weather.ts, osrm.ts
   src/fixtures/          labelled synthetic fixtures, matching each real endpoint's shape
   src/app/api/            route handlers (plan, push subscribe/test) — keeps API keys server-side
@@ -41,7 +41,7 @@ The ranking engine (`src/lib/domain/`) never calls `fetch`; the API route (`src/
 | `PS2/data/AmendmenttoMP2014RailStation.geojson` (provided) | Real station coordinates (polygon centroids) for the corridor | Provided under the hackathon dataset terms | Static, always |
 | OpenStreetMap (via `routing.openstreetmap.de` OSRM instances, and `tile.openstreetmap.org`) | Real walking/cycling route geometry; map tiles | ODbL — attribution shown on every map (`© OpenStreetMap contributors`) | Live |
 | data.gov.sg two-hr-forecast | Weather exposure flag for walk/cycle legs | Singapore Open Data Licence | Live, keyless |
-| LTA DataMall `TrainServiceAlerts`, `PCDForecast` | Disruptions, station crowd forecast | Free registered use, DataMall terms | **Fixture** in this environment (no `AccountKey` configured) — live code path implemented, see `PS2/app/README.md` §4 |
+| LTA DataMall `TrainServiceAlerts`, `PCDForecast` | Disruptions, station crowd forecast | Free registered use, DataMall terms | Live locally verified; explicit scenarios use fixtures. Cloud verification: `DEPLOYMENT.md` |
 | LTA / Tower Transit foldable-bicycle notice | Bike-carriage eligibility rule | Public notice, cited in `src/lib/domain/bikeRules.ts` | Static fact, verified during development (Sept 2026) |
 | Wikipedia (North East MRT line, Circle MRT line) | Cross-check of station sequence while building `corridor.ts` | Reference only, not redistributed | — |
 
@@ -81,11 +81,17 @@ Explicitly designed, not incidental:
 ## 7. Known limits
 
 - **Bounded corridor**: only Punggol ↔ one-north via NEL/CCL is modelled — a request far outside that corridor is honestly rejected (HTTP 422 with an explanation), not silently mishandled.
-- **LTA DataMall untested live**: no `AccountKey` was available in this environment; the live code path is implemented and falls back to a clearly labelled fixture. This is disclosed in the running app itself, not just here.
+- **LTA DataMall**: live alerts and NEL/CCL forecasts passed local authenticated checks. Missing or failed live feeds now remain unknown; explicit demo scenarios are separate. See `DEPLOYMENT.md` for deployed verification.
 - **Rail geometry is schematic**, not a live GPS trace — station-to-station through real coordinates.
 - **Real-device testing is pending** — validated via the app's own responsive CSS and a resized browser viewport during development, not an actual phone. Per the brief's own instruction, this is stated rather than claimed.
-- **A hosted deployment was not created** — this submission is local-only per the task's explicit instruction; deployment and GitHub publication are deferred to a separate step the team will take.
+- **Google Cloud deployment**: scripts and container configuration are at the repository root. Current deployment status is recorded in `DEPLOYMENT.md`; no public URL is claimed before verification.
 
 ## 8. Team
 
-Repository: this NebulaX 2026 hackathon repo, extended under `PS2/app/`. GitHub destination and collaborators to be confirmed separately by the team before submission (see `PS2/submission/README.md` §"Logistics" — those details are marked "to be confirmed by the organisers" in the source brief and were not resolved as part of this build session).
+Repository: this NebulaX 2026 hackathon repo, now at the repository root. GitHub destination: `https://github.com/lin-nj/flex.git`; collaborators are managed by the team (see `PS2/submission/README.md` §"Logistics" — those details are marked "to be confirmed by the organisers" in the source brief and were not resolved as part of this build session).
+
+## Deployment audit update ? 19 September 2026
+
+The merged UI is preserved. Production push subscription/test endpoints and their control are disabled: the in-memory development demonstration described above is not reliable background monitoring. Saved-trip reevaluation remains foreground-only. Live and synthetic LTA modes are now explicit, forecasts match Singapore dates, and unavailable data stays unknown. Source notes, planned advisories and stale warnings are visible again. Rail timings remain assumptions; no bus routing or automatic future-closure interpretation is claimed. Current source/build/test/deployment evidence is in `DEPLOYMENT.md`.
+
+The actual app and APIs are now verified publicly on Google Cloud at **https://flex-tbqkdfa42a-uc.a.run.app**, revision `flex-00001-g95`, in project `qwiklabs-gcp-04-d64717e9afa3`, region `us-central1`. Cloud Build passed 30 tests, lint, types and production compilation. An unauthenticated browser verified phone/desktop layout, map tiles, scenario notices and offline reload. Deployed LTA, weather and access routing were live. Real-phone testing and the submission recording remain pending. No Git commit or push was performed.

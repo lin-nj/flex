@@ -45,3 +45,8 @@ env.*.local
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local deployment evidence, source archives and retired app build artifacts.
+/.deploy/
+**/node_modules/
+**/.next/

@@ -47,7 +47,7 @@ function FitToRoute({ points }: { points: [number, number][] }) {
   const map = useMap();
   useEffect(() => {
     if (points.length === 0) return;
-    map.fitBounds(L.latLngBounds(points), { padding: [28, 28] });
+    map.fitBounds(L.latLngBounds(points), { padding: [28, 28], animate: false });
   }, [map, points]);
   return null;
 }
@@ -81,7 +81,7 @@ export default function RouteMapInner({
   );
 
   return (
-    <MapContainer center={center} zoom={12} scrollWheelZoom={false} className="h-full w-full" attributionControl={true}>
+    <MapContainer center={center} zoom={12} zoomAnimation={false} scrollWheelZoom={false} className="h-full w-full" attributionControl={true}>
       <TileLayer url={TILE_URL} attribution={ATTRIBUTION} />
       <FitToRoute points={fitPoints} />
 

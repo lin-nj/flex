@@ -17,6 +17,8 @@ export interface CachedPlan {
 }
 
 export function cachePlan(result: PlanResult) {
+  // Simulation must not replace the commuter's last known Live journey.
+  if (result.simulation || Object.values(result.conditionsProvenance).some((p) => p.mode === "synthetic")) return;
   try {
     const payload: CachedPlan = { result, cachedAt: new Date().toISOString() };
     localStorage.setItem(PLAN_KEY, JSON.stringify(payload));
@@ -25,10 +27,16 @@ export function cachePlan(result: PlanResult) {
   }
 }
 
-export function readCachedPlan(): CachedPlan | null {
+export function readCachedPlan(request?: TripRequest): CachedPlan | null {
   try {
     const raw = localStorage.getItem(PLAN_KEY);
-    return raw ? (JSON.parse(raw) as CachedPlan) : null;
+    if (!raw) return null;
+    const cached = JSON.parse(raw) as CachedPlan;
+    // Also reject demo plans saved by older app versions, without clearing the user's trip.
+    if (!cached.result?.conditionsProvenance || cached.result.simulation ||
+      Object.values(cached.result.conditionsProvenance).some((p) => p.mode === "synthetic")) return null;
+    if (request && JSON.stringify(cached.result.request) !== JSON.stringify(request)) return null;
+    return cached;
   } catch {
     return null;
   }

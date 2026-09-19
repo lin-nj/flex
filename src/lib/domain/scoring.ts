@@ -9,7 +9,7 @@
 import { ROUTE_OPTIONS, ASSUMED_SEGMENT_MINUTES, assumedWaitMinutes, stationByCode } from "./corridor";
 import { CROWD_RANK } from "./crowdScale";
 import { assessDisruptionForRoute, isRouteSevered } from "./disruptionMatch";
-import { addMinutes, isAfter, midpoint, toMinutes } from "./clock";
+import { addMinutes, midpoint, toMinutes } from "./clock";
 import { assessBikeCarriage } from "./bikeRules";
 import type {
   AccessMode,
@@ -102,6 +102,8 @@ export function evaluateCandidate(input: EvaluateInput): CandidateEvaluation {
     if (idx > 0) cursor = addMinutes(cursor, perSegmentMinutes);
     const { level, bucket } = lookupCrowd(crowdByStation.get(code), cursor);
     crowdEstimates.push({ stationCode: code, estimatedArrivalClock: cursor, level, bucketSource: bucket });
+    const transfer = routeOption.interchanges.find((i) => i.at === code);
+    if (transfer) cursor = addMinutes(cursor, transfer.walkMinutes + mitigationDelay);
   });
   const worstRank = Math.max(...crowdEstimates.map((c) => CROWD_RANK[c.level]));
   const worstCrowd = (Object.entries(CROWD_RANK).find(([, r]) => r === worstRank)?.[0] ?? "unknown") as CrowdLevel;
@@ -155,7 +157,7 @@ export function evaluateCandidate(input: EvaluateInput): CandidateEvaluation {
     feasible = false;
     infeasibleReason = severedNote;
   }
-  if (feasible && isAfter(arrivalRange[1], latestArrival)) {
+  if (feasible && toMinutes(departureClock) + totalHighMinutes > toMinutes(latestArrival)) {
     feasible = false;
     infeasibleReason = `Would arrive by ${arrivalRange[1]} at worst case, after your latest acceptable arrival of ${latestArrival}.`;
   }
