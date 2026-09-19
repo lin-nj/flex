@@ -14,33 +14,36 @@ export default function SavedTripControls({
   changedNotice: string | null;
 }) {
   return (
-    <section className="flex flex-col gap-2 rounded-2xl border border-border bg-surface p-3">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold">Save this trip</span>
-        {isSaved ? (
-          <button onClick={onClear} className="text-xs font-medium text-danger">
-            Remove
-          </button>
-        ) : (
-          <button onClick={onSave} className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-accent-contrast">
-            Save
-          </button>
-        )}
-      </div>
-      {isSaved && (
-        <p className="text-xs text-text-muted">
-          While this tab is open, Flex re-checks conditions every couple of minutes and flags anything that changes your
-          recommendation.
-          {lastReevaluatedAt && (
-            <> Last checked {new Date(lastReevaluatedAt).toLocaleTimeString("en-SG", { hour: "2-digit", minute: "2-digit" })}.</>
-          )}
-        </p>
-      )}
+    <div className="flex flex-col gap-3">
       {changedNotice && (
-        <div className="rounded-lg bg-warn-soft p-2 text-xs font-medium text-warn" role="status">
+        <div className="rounded-[14px] bg-warn-soft p-4 text-[15px] font-medium text-warn" role="status">
           {changedNotice}
         </div>
       )}
-    </section>
+
+      {isSaved ? (
+        <>
+          <button onClick={onClear} className="w-full rounded-[14px] bg-surface px-4 py-4 text-[17px] font-semibold">
+            Saved — tap to remove
+          </button>
+          <p className="text-center text-[13px] text-text-muted">
+            Re-checked while this tab is open
+            {lastReevaluatedAt && (
+              <>
+                {" · last checked "}
+                {new Date(lastReevaluatedAt).toLocaleTimeString("en-SG", { hour: "2-digit", minute: "2-digit" })}
+              </>
+            )}
+          </p>
+        </>
+      ) : (
+        <button
+          onClick={onSave}
+          className="w-full rounded-[14px] bg-accent px-4 py-4 text-[17px] font-semibold text-accent-contrast"
+        >
+          Save this trip
+        </button>
+      )}
+    </div>
   );
 }

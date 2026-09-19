@@ -33,6 +33,11 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
+# Dotless variants: `.env*` does not match these, and a stray `env.local`
+# holding a real key would otherwise be committable.
+env.local
+env.*.local
+*.env
 
 # vercel
 .vercel

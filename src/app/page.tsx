@@ -6,11 +6,12 @@ import TripForm from "@/components/TripForm";
 import RecommendationCard from "@/components/RecommendationCard";
 import DepartureComparison from "@/components/DepartureComparison";
 import RouteMap from "@/components/RouteMap";
-import ExplanationPanel from "@/components/ExplanationPanel";
 import ScenarioPicker from "@/components/ScenarioPicker";
 import OfflineBanner from "@/components/OfflineBanner";
 import NoRouteCard from "@/components/NoRouteCard";
 import SavedTripControls from "@/components/SavedTripControls";
+import Disclosure from "@/components/Disclosure";
+import DataAttribution from "@/components/DataAttribution";
 import { buildDefaultTripRequest } from "@/lib/domain/defaultTrip";
 import { ROUTE_OPTIONS } from "@/lib/domain/corridor";
 import { assessDisruptionForRoute } from "@/lib/domain/disruptionMatch";
@@ -26,7 +27,7 @@ interface PlanApiResponse {
 }
 
 export default function Home() {
-  const [request, setRequest] = useState<TripRequest>(() => buildDefaultTripRequest(new Date().toISOString().slice(0, 10)));
+  const [request, setRequest] = useState<TripRequest>(() => buildDefaultTripRequest());
   const [scenario, setScenario] = useState<ScenarioId>("normal");
   const [simulateStale, setSimulateStale] = useState(false);
   const [data, setData] = useState<PlanApiResponse | null>(null);
@@ -39,6 +40,7 @@ export default function Home() {
   const [lastReevaluatedAt, setLastReevaluatedAt] = useState<string | null>(null);
   const [changedNotice, setChangedNotice] = useState<string | null>(null);
   const [pushStatus, setPushStatus] = useState<string | null>(null);
+  const [panelOpen, setPanelOpen] = useState(false);
   const lastRecommendedId = useRef<string | null>(null);
 
   const plan = useCallback(
@@ -175,50 +177,66 @@ export default function Home() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-4 pb-10">
-      <Header />
-      <div className="flex flex-col gap-4 px-4">
-        {!isOnline && <OfflineBanner cachedAt={cachedAt} />}
+    <main className="mx-auto flex w-full max-w-md flex-1 flex-col pb-[max(3rem,env(safe-area-inset-bottom))]">
+      <Header panelOpen={panelOpen} onTogglePanel={() => setPanelOpen((v) => !v)} />
 
-        <details className="rounded-2xl border border-border bg-surface p-4" open={!result}>
-          <summary className="cursor-pointer text-sm font-semibold">Trip setup</summary>
-          <div className="mt-3">
-            <TripForm request={request} onChange={setRequest} onSubmit={handlePlan} loading={loading} />
-          </div>
-        </details>
+      {isOnline && panelOpen && (
+        <ScenarioPicker
+          scenario={scenario}
+          onScenario={handleScenario}
+          simulateStale={simulateStale}
+          onStale={handleStale}
+          onSendTestPush={handleTestPush}
+          pushStatus={pushStatus}
+        />
+      )}
 
-        {error && (
-          <div className="rounded-xl border border-danger/40 bg-danger-soft p-3 text-sm text-danger" role="alert">
-            {error}
-          </div>
-        )}
+      {(!isOnline || error) && (
+        <div className="flex flex-col gap-3 px-5 pt-4">
+          {!isOnline && <OfflineBanner cachedAt={cachedAt} />}
+          {error && (
+            <div className="rounded-[14px] bg-danger-soft p-4 text-[15px] text-danger" role="alert">
+              {error}
+            </div>
+          )}
+        </div>
+      )}
 
-        {isOnline && (
-          <ScenarioPicker
-            scenario={scenario}
-            onScenario={handleScenario}
-            simulateStale={simulateStale}
-            onStale={handleStale}
-            onSendTestPush={handleTestPush}
-            pushStatus={pushStatus}
+      {result?.noFeasibleRoute && (
+        <div className="px-5 pt-4">
+          <NoRouteCard limitingConstraint={result.limitingConstraint} />
+        </div>
+      )}
+
+      {loading && !result && <p className="px-5 pt-8 text-[17px] text-text-muted">Planning your trip…</p>}
+
+      {result?.recommended && selected && (
+        <>
+          <RecommendationCard candidate={result.recommended} explanation={result.explanation} />
+
+          <RouteMap
+            origin={request.origin}
+            destination={request.destination}
+            candidate={selected}
+            disruptedStations={disruptedStations}
           />
-        )}
 
-        {result?.noFeasibleRoute && <NoRouteCard limitingConstraint={result.limitingConstraint} />}
-
-        {result?.recommended && selected && (
-          <>
-            <RecommendationCard candidate={result.recommended} explanation={result.explanation} />
-
-            <RouteMap origin={request.origin} destination={request.destination} candidate={selected} disruptedStations={disruptedStations} />
-
+          <div className="pt-7">
             <DepartureComparison
               recommended={result.recommended}
               alternatives={result.alternatives}
               selectedId={selected.id}
               onSelect={setSelected}
             />
+          </div>
 
+          <div className="mx-5 mt-7 overflow-hidden rounded-[14px] bg-surface">
+            <Disclosure title="Trip settings">
+              <TripForm request={request} onChange={setRequest} onSubmit={handlePlan} loading={loading} />
+            </Disclosure>
+          </div>
+
+          <div className="px-5 pt-7">
             <SavedTripControls
               isSaved={isSaved}
               onSave={handleSave}
@@ -226,11 +244,11 @@ export default function Home() {
               lastReevaluatedAt={lastReevaluatedAt}
               changedNotice={changedNotice}
             />
+          </div>
 
-            <ExplanationPanel result={result} messages={data?.alerts.messages ?? []} />
-          </>
-        )}
-      </div>
+          <DataAttribution result={result} />
+        </>
+      )}
     </main>
   );
 }

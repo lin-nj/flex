@@ -2,6 +2,7 @@ import type { CandidateEvaluation } from "@/lib/domain/types";
 import CrowdBadge from "./CrowdBadge";
 import { routeLabel, formatDuration } from "@/lib/domain/labels";
 
+/** iOS inset-grouped list: one card, hairline separators inset past the time. */
 export default function DepartureComparison({
   recommended,
   alternatives,
@@ -16,35 +17,36 @@ export default function DepartureComparison({
   const options = [recommended, ...alternatives];
 
   return (
-    <section aria-label="Compare departure options" className="mt-4">
-      <h2 className="mb-2 text-sm font-semibold text-text-muted">Compare your options</h2>
-      <div className="flex flex-col gap-2">
+    <section aria-label="Other departure options">
+      <h2 className="px-5 pb-2 text-[13px] font-medium uppercase tracking-wide text-text-muted">Other options</h2>
+      <ul className="mx-5 overflow-hidden rounded-[14px] bg-surface">
         {options.map((c, i) => {
           const selected = c.id === selectedId;
-          const tag = i === 0 ? "Recommended" : c.routeOptionId !== recommended.routeOptionId ? "Another route" : "Alternative time";
+          const tag = i === 0 ? "Recommended" : c.routeOptionId !== recommended.routeOptionId ? "Another route" : null;
           return (
-            <button
-              key={c.id}
-              onClick={() => onSelect(c)}
-              className={`flex w-full items-center justify-between rounded-xl border p-3 text-left transition-colors ${
-                selected ? "border-accent bg-accent-soft" : "border-border bg-surface"
-              }`}
-              aria-pressed={selected}
-            >
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-lg font-bold tabular-nums">{c.departureClock}</span>
-                  <span className="rounded-full bg-black/5 px-2 py-0.5 text-[11px] font-medium text-text-muted">{tag}</span>
-                </div>
-                <div className="mt-0.5 text-xs text-text-muted">
-                  {routeLabel(c.routeOptionId)} · arrive {c.arrivalRange[0]}–{c.arrivalRange[1]} · {formatDuration(c.totalDurationRange)}
-                </div>
-              </div>
-              <CrowdBadge level={c.worstCrowd} compact />
-            </button>
+            <li key={c.id}>
+              <button
+                onClick={() => onSelect(c)}
+                aria-pressed={selected}
+                className={`flex w-full items-center gap-3.5 px-4 py-3 text-left ${selected ? "bg-accent-soft" : ""}`}
+              >
+                <span className="w-[62px] shrink-0 text-[20px] font-semibold tabular-nums">{c.departureClock}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[15px]">
+                    {routeLabel(c.routeOptionId)} · {formatDuration(c.totalDurationRange)}
+                  </span>
+                  <span className="block truncate text-[13px] text-text-muted">
+                    arrive {c.arrivalRange[1]}
+                    {tag && ` · ${tag}`}
+                  </span>
+                </span>
+                <CrowdBadge level={c.worstCrowd} compact />
+              </button>
+              {i < options.length - 1 && <div className="ml-[76px] h-px bg-border" />}
+            </li>
           );
         })}
-      </div>
+      </ul>
     </section>
   );
 }

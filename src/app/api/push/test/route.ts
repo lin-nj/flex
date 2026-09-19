@@ -4,9 +4,9 @@ import { allSubscriptions } from "@/lib/push/subscriptions";
 
 // This route sends a REAL Web Push message via the browser's push service —
 // it is the "bounded attempt" at closed-app delivery described in the
-// brief. It is only ever called from the demo scenario controls, and the
+// brief. It is only ever called from the scenario controls, and the
 // payload is always marked synthetic:true so the notification the user sees
-// visibly says [DEMO] — this never dresses up a fake alert as a real one.
+// visibly says [Test] — this never dresses up a fake alert as a real one.
 
 export async function POST(req: Request) {
   const publicKey = process.env.VAPID_PUBLIC_KEY;
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
   webpush.setVapidDetails(subject, publicKey, privateKey);
 
   const body = await req.json().catch(() => ({}));
-  const message = body.message ?? "A disruption on your saved route was just injected for this demo.";
+  const message = body.message ?? "A disruption on your saved route was just injected for testing.";
 
   const subs = allSubscriptions();
   if (subs.length === 0) {

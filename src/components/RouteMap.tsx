@@ -19,7 +19,7 @@ export default function RouteMap(props: {
   disruptedStations: Set<string>;
 }) {
   return (
-    <div className="h-[46vh] min-h-[280px] w-full overflow-hidden rounded-2xl border border-border">
+    <div className="isolate mx-5 h-[240px] overflow-hidden rounded-[14px] bg-surface">
       <RouteMapInner {...props} />
     </div>
   );

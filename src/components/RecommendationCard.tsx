@@ -2,6 +2,11 @@ import type { CandidateEvaluation } from "@/lib/domain/types";
 import CrowdBadge from "./CrowdBadge";
 import { routeLabel, ACCESS_MODE_LABEL, formatDuration } from "@/lib/domain/labels";
 
+/**
+ * The answer, at iOS large-title weight. Arjun opens this to settle one
+ * question — when do I leave — so the departure time is the page, not a card
+ * on it.
+ */
 export default function RecommendationCard({
   candidate,
   explanation,
@@ -9,51 +14,42 @@ export default function RecommendationCard({
   candidate: CandidateEvaluation;
   explanation: string;
 }) {
+  const activeMinutes = Math.round(candidate.walkingExposureMinutes + candidate.cyclingMinutes);
+
   return (
-    <section className="rounded-2xl border border-border bg-surface p-4 shadow-sm" aria-label="Recommended departure">
-      <div className="flex items-center justify-between gap-2">
-        <span className="rounded-full bg-accent px-3 py-1 text-xs font-bold uppercase tracking-wide text-accent-contrast">
-          Recommended
-        </span>
-        <CrowdBadge level={candidate.worstCrowd} compact />
+    <section className="px-5 pb-6 pt-7" aria-label="Recommended departure">
+      <p className="text-[17px] text-text-muted">Leave at</p>
+      <p className="mt-1 text-[76px] font-bold leading-[0.95] tracking-[-0.03em] tabular-nums">
+        {candidate.departureClock}
+      </p>
+
+      <p className="mt-5 text-[22px] leading-snug">
+        Arrive by <span className="font-semibold tabular-nums">{candidate.arrivalRange[1]}</span>
+      </p>
+      <p className="mt-1.5 text-[17px] text-text-muted">
+        {routeLabel(candidate.routeOptionId)} · {ACCESS_MODE_LABEL[candidate.accessMode]}
+      </p>
+
+      <div className="mt-5 flex flex-wrap items-center gap-2">
+        <CrowdBadge level={candidate.worstCrowd} />
+        {candidate.weatherFlag && (
+          <span className="rounded-full bg-muted-fill px-3 py-1.5 text-[15px] font-medium text-text-muted">
+            {candidate.weatherFlag}
+          </span>
+        )}
+        {candidate.mitigations.length > 0 && (
+          <span className="rounded-full bg-warn-soft px-3 py-1.5 text-[15px] font-medium text-warn">
+            {candidate.mitigations.join(" · ")}
+          </span>
+        )}
       </div>
 
-      <div className="mt-3 flex items-baseline gap-2">
-        <span className="text-3xl font-bold tabular-nums">{candidate.departureClock}</span>
-        <span className="text-text-muted">depart</span>
-      </div>
-      <div className="mt-1 text-sm text-text-muted">
-        Arrive {candidate.arrivalRange[0]}–{candidate.arrivalRange[1]} · {routeLabel(candidate.routeOptionId)} ·{" "}
-        {ACCESS_MODE_LABEL[candidate.accessMode]}
-      </div>
+      <p className="mt-5 text-[17px] leading-relaxed">{explanation}</p>
 
-      <p className="mt-3 text-[15px] leading-snug text-text">{explanation}</p>
-
-      <dl className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
-        <div className="rounded-lg bg-bg p-2">
-          <dt className="text-text-muted">Duration</dt>
-          <dd className="mt-0.5 font-semibold tabular-nums">{formatDuration(candidate.totalDurationRange)}</dd>
-        </div>
-        <div className="rounded-lg bg-bg p-2">
-          <dt className="text-text-muted">Transfers</dt>
-          <dd className="mt-0.5 font-semibold tabular-nums">{candidate.transfers}</dd>
-        </div>
-        <div className="rounded-lg bg-bg p-2">
-          <dt className="text-text-muted">Walk/cycle</dt>
-          <dd className="mt-0.5 font-semibold tabular-nums">
-            {Math.round(candidate.walkingExposureMinutes + candidate.cyclingMinutes)} min
-          </dd>
-        </div>
-      </dl>
-
-      {candidate.mitigations.length > 0 && (
-        <div className="mt-3 rounded-lg bg-warn-soft p-2.5 text-xs text-warn">
-          <strong className="font-semibold">Mitigation active:</strong> {candidate.mitigations.join(" · ")}
-        </div>
-      )}
-      {candidate.weatherFlag && (
-        <div className="mt-2 rounded-lg bg-bg p-2.5 text-xs text-text-muted">☔ {candidate.weatherFlag}</div>
-      )}
+      <p className="mt-3 text-[15px] text-text-muted tabular-nums">
+        {formatDuration(candidate.totalDurationRange)} · {candidate.transfers}{" "}
+        {candidate.transfers === 1 ? "transfer" : "transfers"} · {activeMinutes} min on foot or bike
+      </p>
     </section>
   );
 }

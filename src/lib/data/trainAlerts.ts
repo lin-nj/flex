@@ -31,11 +31,29 @@ interface RawMessage {
   CreatedDate: string;
 }
 interface RawResponse {
-  Value: {
+  // OData envelope key is lowercase `value` on the wire, despite the capitalised
+  // field names nested inside it. Verified against the live endpoint.
+  value: {
     Status: 1 | 2;
     AffectedSegments: RawAffectedSegment[];
     Message: RawMessage[];
   };
+}
+
+/** DataMall reports quota exhaustion as a 500 with a fault body, which is worth
+ *  distinguishing from a genuine outage when the reason is shown to the user. */
+async function describeFailure(res: Response): Promise<string> {
+  try {
+    const body = (await res.json()) as { fault?: { faultstring?: string; detail?: { errorcode?: string } } };
+    const fault = body.fault?.faultstring;
+    if (body.fault?.detail?.errorcode === "policies.ratelimit.QuotaViolation") {
+      return "LTA DataMall rate limit reached for this AccountKey";
+    }
+    if (fault) return `TrainServiceAlerts: ${fault}`;
+  } catch {
+    /* fall through to the bare status */
+  }
+  return `TrainServiceAlerts HTTP ${res.status}`;
 }
 
 function parseSegment(raw: RawAffectedSegment): AffectedSegment {
@@ -59,15 +77,20 @@ export async function fetchTrainServiceAlerts(
   try {
     const res = await fetch(ENDPOINT, {
       headers: { AccountKey: key, Accept: "application/json" },
-      // TrainServiceAlerts changes ad hoc; do not cache at the fetch layer.
-      cache: "no-store",
+      // TrainServiceAlerts changes ad hoc, but DataMall enforces a per-key
+      // quota and this endpoint is hit on every plan request — including the
+      // saved-trip re-check timer. Uncached, an ordinary demo session exhausts
+      // the quota and every alert silently degrades to a fixture. 60s is still
+      // well inside "real time" for a commuter deciding when to leave.
+      next: { revalidate: 60 },
     });
-    if (!res.ok) throw new Error(`TrainServiceAlerts HTTP ${res.status}`);
+    if (!res.ok) throw new Error(await describeFailure(res));
     const raw = (await res.json()) as RawResponse;
+    if (!raw.value) throw new Error("TrainServiceAlerts response had no `value` envelope");
     return {
-      status: raw.Value.Status,
-      affectedSegments: (raw.Value.AffectedSegments ?? []).map(parseSegment),
-      messages: (raw.Value.Message ?? []).map((m) => ({ content: m.Content, createdDate: m.CreatedDate })),
+      status: raw.value.Status,
+      affectedSegments: (raw.value.AffectedSegments ?? []).map(parseSegment),
+      messages: (raw.value.Message ?? []).map((m) => ({ content: m.Content, createdDate: m.CreatedDate })),
       provenance: {
         mode: "live",
         source: "LTA DataMall TrainServiceAlerts",

@@ -1,23 +1,23 @@
 import type { CrowdLevel } from "@/lib/domain/types";
 
-const STYLES: Record<CrowdLevel, { bg: string; fg: string; label: string; icon: string }> = {
-  low: { bg: "bg-accent-soft", fg: "text-accent", label: "Low crowd", icon: "●" },
-  moderate: { bg: "bg-warn-soft", fg: "text-warn", label: "Moderate crowd", icon: "●●" },
-  high: { bg: "bg-danger-soft", fg: "text-danger", label: "High crowd", icon: "●●●" },
-  unknown: { bg: "bg-black/5", fg: "text-text-muted", label: "Crowd unknown", icon: "?" },
+const STYLES: Record<CrowdLevel, { bg: string; fg: string; dot: string; label: string; short: string }> = {
+  low: { bg: "bg-accent-soft", fg: "text-accent", dot: "bg-accent", label: "Low crowd", short: "Low" },
+  moderate: { bg: "bg-warn-soft", fg: "text-warn", dot: "bg-warn", label: "Moderate crowd", short: "Moderate" },
+  high: { bg: "bg-danger-soft", fg: "text-danger", dot: "bg-danger", label: "High crowd", short: "Busy" },
+  unknown: { bg: "bg-muted-fill", fg: "text-text-muted", dot: "bg-text-muted", label: "Crowd unknown", short: "No data" },
 };
 
 export default function CrowdBadge({ level, compact = false }: { level: CrowdLevel; compact?: boolean }) {
   const s = STYLES[level];
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${s.bg} ${s.fg}`}
+      className={`inline-flex shrink-0 items-center gap-1.5 rounded-full font-medium ${s.bg} ${s.fg} ${
+        compact ? "px-2.5 py-1 text-[13px]" : "px-3 py-1.5 text-[15px]"
+      }`}
       aria-label={s.label}
     >
-      <span aria-hidden className="tabular-nums tracking-tighter">
-        {s.icon}
-      </span>
-      {!compact && <span>{s.label}</span>}
+      <span aria-hidden className={`h-2 w-2 rounded-full ${s.dot}`} />
+      {compact ? s.short : s.label}
     </span>
   );
 }

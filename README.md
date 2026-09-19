@@ -18,12 +18,6 @@ No database, no account system, no paid service is required to run or judge this
 
 ## 2. Install & run
 
-```bash
-cd PS2/app
-npm install
-cp .env.example .env.local   # optional — see §3
-npm run dev
-```
 
 Open **http://localhost:3000** on a phone-width browser window (or an actual phone on the same network, via the "Network:" URL Next prints on start).
 

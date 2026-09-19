@@ -1,22 +1,42 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #f7f8f6;
+  color-scheme: light dark;
+
+  --bg: #f2f2f7;
   --surface: #ffffff;
-  --text: #161b19;
-  --text-muted: #52605c;
-  --border: #dbe2de;
+  --text: #000000;
+  --text-muted: #6c6c70;
+  --border: #e3e3e8;
   --accent: #0f6e5b;
+  /* Text drawn on top of a solid --accent / --warn / --danger fill. */
   --accent-contrast: #ffffff;
   --accent-soft: #e3f2ee;
   --warn: #9a5b00;
   --warn-soft: #fff2df;
   --danger: #b3261e;
   --danger-soft: #fdecea;
-  --crowd-low: #0f6e5b;
-  --crowd-moderate: #9a5b00;
-  --crowd-high: #b3261e;
-  --crowd-unknown: #5b6764;
+  /* Neutral low-contrast chip fill; must stay visible in both themes, which a
+     literal black/5/white/5 can't do. */
+  --muted-fill: #0000000d;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #000000;
+    --surface: #1c1c1e;
+    --text: #ffffff;
+    --text-muted: #98989f;
+    --border: #38383a;
+    --accent: #5cd6b6;
+    --accent-contrast: #04231c;
+    --accent-soft: #0f2c26;
+    --warn: #e0a44a;
+    --warn-soft: #2e2314;
+    --danger: #f2837c;
+    --danger-soft: #331a19;
+    --muted-fill: #ffffff14;
+  }
 }
 
 @theme inline {
@@ -32,39 +52,53 @@
   --color-warn-soft: var(--warn-soft);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
+  --color-muted-fill: var(--muted-fill);
 }
 
-* {
-  -webkit-tap-highlight-color: transparent;
-}
+/* Everything below belongs in @layer base. Unlayered rules outrank *every*
+   Tailwind utility regardless of specificity, so leaving these unlayered made
+   `min-height: 44px` silently beat any height utility set on a button. */
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
 
-html,
-body {
-  background: var(--bg);
-  color: var(--text);
-}
+  html,
+  body {
+    background: var(--bg);
+    color: var(--text);
+  }
 
-body {
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  overflow-x: hidden;
-}
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", system-ui,
+      "Segoe UI", Roboto, sans-serif;
+    overflow-x: hidden;
+    /* iOS Dynamic Type nudges body copy up; 17px is the platform body size. */
+    font-size: 17px;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
 
-button,
-[role="button"] {
-  min-height: 44px;
-}
+  /* Touch-target floor. A utility on the element now wins, as it should. */
+  button,
+  [role="button"] {
+    min-height: 44px;
+  }
 
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
+/* Deliberately NOT in a layer: leaflet.css ships unlayered, so a layered rule
+   could never override it. */
 .leaflet-container {
   background: var(--bg);
   font-family: inherit;
